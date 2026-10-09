@@ -80,15 +80,16 @@ echo 'SUBSYSTEM=="hidraw", ATTRS{idVendor}=="372e", TAG+="uaccess", MODE="0660"'
 sudo udevadm control --reload && sudo udevadm trigger
 ```
 
-## Sync every 5 minutes (systemd, e.g. Arch / CachyOS)
+## Automatic clock sync (systemd, e.g. Arch / CachyOS)
 
 ```bash
-./install.sh            # venv + udev rule + user timer
+./install.sh            # venv + udev rule + user service/timer
 ./install.sh uninstall  # remove it all
 ```
 
-Installs a systemd **user** timer (`mouse-lcd-sync.timer`) that runs 10 s after
-login and then every 5 minutes. Logs: `journalctl --user -u mouse-lcd-sync.service`.
+Syncs when the dongle/dock is plugged in (udev → `mouse-lcd-sync.service`),
+10 s after login, and daily — like the Windows tool, which syncs on connect.
+Logs: `journalctl --user -u mouse-lcd-sync.service`.
 
 ## Protocol
 

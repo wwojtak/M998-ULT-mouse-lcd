@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Install a systemd user timer that syncs the M998-ULT dock clock every 5 minutes.
+# Sync the M998-ULT dock clock when the dongle/dock is plugged in, at login and daily
+# (the Windows tool syncs only on connect).
 # Usage: ./install.sh            install / update
 #        ./install.sh uninstall  remove timer, service and udev rule
 set -euo pipefail
@@ -27,10 +28,12 @@ if [[ ! -x "$REPO/.venv/bin/python" ]]; then
 fi
 "$REPO/.venv/bin/pip" install -q -r "$REPO/requirements.txt"
 
-# udev rule so the logged-in user can write to the dongle's hidraw node
-if [[ ! -f "$UDEV_RULE" ]]; then
-    echo 'SUBSYSTEM=="hidraw", ATTRS{idVendor}=="372e", TAG+="uaccess", MODE="0660"' \
-        | sudo tee "$UDEV_RULE" >/dev/null
+# udev: let the logged-in user write to the dongle, and start a sync on plug-in.
+# Fires once per hidraw node (3); systemd merges the start requests.
+RULES='SUBSYSTEM=="hidraw", ATTRS{idVendor}=="372e", TAG+="uaccess", MODE="0660"
+ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="372e", ATTRS{idProduct}=="105f", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="'"$NAME"'.service"'
+if [[ "$(cat "$UDEV_RULE" 2>/dev/null)" != "$RULES" ]]; then
+    echo "$RULES" | sudo tee "$UDEV_RULE" >/dev/null
     sudo udevadm control --reload
     sudo udevadm trigger --subsystem-match=hidraw
 fi
@@ -43,24 +46,27 @@ Description=Sync Redragon M998-ULT LCD dock clock
 
 [Service]
 Type=oneshot
+# give a freshly plugged dock a moment to come up
+ExecStartPre=/usr/bin/env sleep 2
 ExecStart=$REPO/.venv/bin/python $REPO/sync_time.py
 EOF
 
 cat >"$UNIT_DIR/$NAME.timer" <<EOF
 [Unit]
-Description=Sync Redragon M998-ULT LCD dock clock every 5 minutes
+Description=Sync Redragon M998-ULT LCD dock clock at login and daily
 
 [Timer]
 OnStartupSec=10s
-OnUnitActiveSec=5min
-AccuracySec=10s
+OnCalendar=daily
+Persistent=true
 
 [Install]
 WantedBy=timers.target
 EOF
 
 systemctl --user daemon-reload
-systemctl --user enable --now "$NAME.timer"
+systemctl --user enable "$NAME.timer"
+systemctl --user restart "$NAME.timer"  # pick up schedule changes
 systemctl --user start "$NAME.service" || true
 
 echo
