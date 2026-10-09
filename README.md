@@ -43,7 +43,7 @@ Updating is Windows-only; this tool never writes firmware.
 .venv/bin/python nyan.py nyan.gif          # (re)build nyan.gif, already included
 .venv/bin/python upload_gif.py nyan.gif    # upload it (~1 min for 12 frames)
 .venv/bin/python upload_gif.py any.gif --fit cover --preview out.png  # check scaling
-.venv/bin/python screen_mode.py 0          # or 1: toggle animation / system screen
+.venv/bin/python screen_mode.py gif        # startup page: gif or date (after replug)
 ```
 
 `upload_gif.py` takes any GIF, scales it to the 240×135 screen
@@ -55,7 +55,9 @@ Upload protocol (output report `0x09`, framed `09 50 <sum> 3A <cmd> …`):
 `A0` start (`[6]`=frames, `[8]`=delay), then per frame `A3` data packets
 (`[5]`=frame, `[6..7]`=chunk BE, `[8..63]`=56 bytes of RGB565 BE, rows top-down,
 1158 chunks per frame), then `A1` finish (`[6]`=frames, `[8]`=delay). `A2` aborts.
-Screen mode: `B2`, `[5]`=0/1.
+Startup page: `B2`, `[5]`=1 GIF / 0 date, applied on next power-up. The dock's
+screen button cycles GIF → date → DPI → polling rate → lift-off distance;
+RGB is only on the dock's other button (no software command found).
 
 ### Linux permissions
 
