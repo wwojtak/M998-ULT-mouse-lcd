@@ -25,6 +25,17 @@ for chunks `x` = 0, 1 (checksum = sum of bytes 2..63) and reads report `0x03`
 back. In the chunk-1 reply, byte 6 holds the battery: bit 7 = charging,
 bits 0–6 = percent.
 
+### Status readout
+
+```bash
+.venv/bin/python status.py        # battery, profile, polling rate, DPI stages, ...
+.venv/bin/python status.py --raw  # also dump raw info/config bytes
+```
+
+Read-only. Device info (block `02`, index `80`/`81`) plus 6 config reads
+(block `0A+i`, index `40+i`) — byte layout is documented at the top of `status.py`.
+Lift-off, debounce and sleep are shown as raw device values.
+
 ### Firmware versions
 
 ```bash

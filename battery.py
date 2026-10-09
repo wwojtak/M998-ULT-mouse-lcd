@@ -29,16 +29,23 @@ from m998 import INFO_USAGE_PAGE, REPORT_LEN, open_device
 REPORT_ID = 0x03
 
 
-def build_request(chunk: int) -> bytes:
+def build_request(block: int, index: int) -> bytes:
+    """Feature report 0x03 read request: `03 <sum> 50 00 <block> 4F <index>`."""
     buf = bytearray(REPORT_LEN)
     buf[0] = REPORT_ID
-    buf[2:7] = bytes([0x50, 0x00, 0x02, 0x4F, 0x80 | chunk])
+    buf[2:7] = bytes([0x50, 0x00, block, 0x4F, index])
     buf[1] = sum(buf[2:]) & 0xFF
     return bytes(buf)
 
 
 def read_chunk(dev, chunk: int) -> bytes:
-    if dev.send_feature_report(build_request(chunk)) < 0:
+    """Device-info chunk 0 or 1."""
+    return read_block(dev, 0x02, 0x80 | chunk)
+
+
+def read_block(dev, block: int, index: int) -> bytes:
+    """Send a read request and return the 64-byte reply; data is reply[6:16]."""
+    if dev.send_feature_report(build_request(block, index)) < 0:
         raise OSError("send_feature_report failed")
     time.sleep(0.03)
     reply = bytes(dev.get_feature_report(REPORT_ID, REPORT_LEN))
