@@ -43,17 +43,23 @@ def read_chunk(dev, chunk: int) -> bytes:
     return read_block(dev, 0x02, 0x80 | chunk)
 
 
-def read_block(dev, block: int, index: int) -> bytes:
-    """Send a read request and return the 64-byte reply; data is reply[6:16]."""
+def read_block(dev, block: int, index: int, tries: int = 20) -> bytes:
+    """Send a read request and return the 64-byte reply; data is reply[6:16].
+
+    Like DriverComm::GetFeatureReport, poll the reply without re-sending: a
+    reply is ready when reply[2] == 0 and reply[4] echoes the block. Data kept
+    in the mouse (e.g. config) is relayed over 2.4G and takes a few polls.
+    """
     if dev.send_feature_report(build_request(block, index)) < 0:
         raise OSError("send_feature_report failed")
-    time.sleep(0.03)
-    reply = bytes(dev.get_feature_report(REPORT_ID, REPORT_LEN))
-    if len(reply) < 16:
-        raise OSError(f"short reply: {reply.hex(' ')}")
-    if reply[2] != 0:
-        raise OSError(f"device returned status {reply[2]:#04x}: {reply[:16].hex(' ')}")
-    return reply
+    reply = b""
+    for _ in range(tries):
+        time.sleep(0.03)
+        reply = bytes(dev.get_feature_report(REPORT_ID, REPORT_LEN))
+        if len(reply) >= 16 and reply[2] == 0 and reply[4] == block:
+            return reply
+    raise OSError(f"no reply for block {block:#04x} index {index:#04x} "
+                  f"(last: {reply[:16].hex(' ')}); is the mouse awake?")
 
 
 def main():
