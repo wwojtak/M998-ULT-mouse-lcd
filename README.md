@@ -13,6 +13,18 @@ python3 -m venv .venv
 .venv/bin/python sync_time.py --dry-run  # print packet only
 ```
 
+### Battery level
+
+```bash
+.venv/bin/python battery.py        # e.g. "85%" or "85% (charging)"
+.venv/bin/python battery.py --raw  # also dump raw device replies
+```
+
+Sends feature report `0x03` (usage page `0xFF00`) `03 <sum> 50 00 02 4F 8x 00…`
+for chunks `x` = 0, 1 (checksum = sum of bytes 2..63) and reads report `0x03`
+back. In the chunk-1 reply, byte 6 holds the battery: bit 7 = charging,
+bits 0–6 = percent.
+
 ### Linux permissions
 
 To run without `sudo`, add a udev rule and replug the dongle:

@@ -54,10 +54,10 @@ def build_packet(t: datetime.datetime) -> bytes:
     return bytes(buf)
 
 
-def find_device():
+def find_device(usage_page=USAGE_PAGE):
     devs = [d for d in hid.enumerate(VID) if d["product_id"] in PIDS]
     for d in devs:
-        if d["usage_page"] == USAGE_PAGE:
+        if d["usage_page"] == usage_page:
             return d
     # Some backends don't expose usage pages; fall back to the interface number.
     for d in devs:
