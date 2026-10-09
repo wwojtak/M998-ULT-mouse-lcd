@@ -28,7 +28,7 @@ bits 0–6 = percent.
 ### Custom animation on the dock screen
 
 ```bash
-.venv/bin/python nyan.py nyan.gif          # build a 240x135 Nyan Cat scene
+.venv/bin/python nyan.py nyan.gif          # (re)build nyan.gif, already included
 .venv/bin/python upload_gif.py nyan.gif    # upload it (~1 min for 12 frames)
 .venv/bin/python upload_gif.py any.gif --fit cover --preview out.png  # check scaling
 .venv/bin/python screen_mode.py 0          # or 1: toggle animation / system screen
