@@ -8,14 +8,14 @@ Windows tool (Redragon M998 ULT 1.0.0.5):
     [0..1] protocol version   [2..7] device id   [8] work mode  [9] connection
     [10] bit7 charging, bits0-6 battery %
     [11] low nibble current profile, high nibble profile count
-    [12] max polling rate index  [13] sensor  [14..15] max DPI (BE)
+    [12] polling rate table (7 = up to 8 kHz)  [13] sensor  [14..15] max DPI (LE)
 
   config: 6 reads, block 0x0A+i, index 0x40+i -> 60 bytes
     [0] DPI range (2 = up to 30000)
-    [1] low 3 bits wireless polling rate index, high nibble wired index
+    [1] low 3 bits wireless polling rate, high nibble wired (see RATES_8K)
     [2] high nibble DPI stage (1-based), low nibble stage count
-    [3] lift-off height   [4] button response time (debounce)
-    [5] sensor flags (bits 6-7 e-sports mode)   [8] sleep
+    [3] lift-off height (see lod())   [4] button debounce, ms
+    [5] sensor flags (bits 6-7 e-sports mode)   [8] sleep, units of 30 s
     [11..26] 8 DPI stages, little endian u16 v -> DPI = (v + 1) * 50
     [27..50] 8 DPI stage colours, R G B
 """
@@ -25,11 +25,26 @@ import sys
 from battery import read_block, read_chunk
 from m998 import INFO_USAGE_PAGE, open_device
 
-RATES = [125, 250, 500, 1000, 2000, 4000, 8000]
+# polling rate codes, from DeviceMainDlg::LoadMouseConfigData (rate table 7)
+RATES_8K = {0: 1000, 1: 500, 2: 250, 3: 125, 4: 8000, 5: 4000, 6: 2000}
 
 
-def rate(i):
-    return f"{RATES[i]} Hz" if 0 <= i < len(RATES) else f"? (index {i})"
+def rate(code):
+    hz = RATES_8K.get(code)
+    return f"{hz} Hz" if hz else f"? (code {code})"
+
+
+def lod(code, dpi_range):
+    # DPI range 2 (30K sensor) offers 0.7/1/2 mm, otherwise 1/2 mm
+    table = {1: "0.7 mm", 2: "1 mm", 3: "2 mm"} if dpi_range == 2 else {1: "1 mm", 2: "2 mm"}
+    return table.get(code, f"? (code {code})")
+
+
+def sleep(code):
+    if code == 0:
+        return "never"
+    secs = code * 30
+    return f"{secs} s" if secs < 60 else f"{secs // 60} min" + (f" {secs % 60} s" if secs % 60 else "")
 
 
 def main():
@@ -64,18 +79,17 @@ def main():
 
     print(f"battery        {level}%{' (charging)' if charging else ''}")
     print(f"profile        {profile + 1} of {profiles}")
-    print(f"polling rate   {rate(cfg[1] & 0x07)} wireless, {rate(cfg[1] >> 4)} wired "
-          f"(max {rate(info[12])})")
+    print(f"polling rate   {rate(cfg[1] & 0x07)} wireless, {rate(cfg[1] >> 4)} wired")
     print(f"DPI            {dpis[stage] if 0 <= stage < 8 else '?'} "
           f"(stage {stage + 1} of {stages})")
     for k in range(min(stages, 8)):
         mark = "*" if k == stage else " "
         print(f"  {mark} stage {k + 1}    {dpis[k]:>5}  #{colours[k].hex()}")
-    print(f"lift-off       {cfg[3]}")
-    print(f"debounce       {cfg[4]}")
-    print(f"sleep          {cfg[8]}")
+    print(f"lift-off       {lod(cfg[3], cfg[0])}")
+    print(f"debounce       {cfg[4]} ms")
+    print(f"sleep          {sleep(cfg[8])}")
     print(f"sensor flags   {cfg[5]:#04x} (e-sports mode {cfg[5] >> 6})")
-    print(f"sensor         {info[13]:#04x}, max DPI {info[14] << 8 | info[15]}")
+    print(f"sensor         {info[13]:#04x}, max DPI {info[14] | info[15] << 8}")
     print(f"protocol       {info[0] << 8 | info[1]:x}, device id {info[2:8].hex()}")
     return 0
 
