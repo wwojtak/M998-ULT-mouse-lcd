@@ -25,6 +25,17 @@ for chunks `x` = 0, 1 (checksum = sum of bytes 2..63) and reads report `0x03`
 back. In the chunk-1 reply, byte 6 holds the battery: bit 7 = charging,
 bits 0–6 = percent.
 
+### Firmware versions
+
+```bash
+.venv/bin/python firmware.py   # e.g. "2.4G dongle/dock   52  (up to date)"
+```
+
+Shows the USB release number (bcdDevice) like the Windows tool does: the
+dongle/dock over 2.4G, or the mouse when plugged in by cable. Compared against
+the newest known release, `0052` (Redragon OTA updater, firmware dated 2026-03-03).
+Updating is Windows-only for now; this tool never writes firmware.
+
 ### Custom animation on the dock screen
 
 ```bash
