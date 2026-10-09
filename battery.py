@@ -24,11 +24,9 @@ import argparse
 import sys
 import time
 
-from sync_time import find_device, hid
+from m998 import INFO_USAGE_PAGE, REPORT_LEN, open_device
 
-USAGE_PAGE = 0xFF00
 REPORT_ID = 0x03
-REPORT_LEN = 64
 
 
 def build_request(chunk: int) -> bytes:
@@ -56,14 +54,9 @@ def main():
     ap.add_argument("--raw", action="store_true", help="also dump raw replies")
     args = ap.parse_args()
 
-    info = find_device(USAGE_PAGE)
-    if not info:
-        print("device not found (VID 372E, usage page FF00 / interface 2)",
-              file=sys.stderr)
+    dev = open_device(INFO_USAGE_PAGE)
+    if not dev:
         return 1
-
-    dev = hid.device()
-    dev.open_path(info["path"])
     try:
         replies = [read_chunk(dev, c) for c in (0, 1)]
     finally:

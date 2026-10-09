@@ -25,6 +25,26 @@ for chunks `x` = 0, 1 (checksum = sum of bytes 2..63) and reads report `0x03`
 back. In the chunk-1 reply, byte 6 holds the battery: bit 7 = charging,
 bits 0–6 = percent.
 
+### Custom animation on the dock screen
+
+```bash
+.venv/bin/python nyan.py nyan.gif          # build a 240x135 Nyan Cat scene
+.venv/bin/python upload_gif.py nyan.gif    # upload it (~1 min for 12 frames)
+.venv/bin/python upload_gif.py any.gif --fit cover --preview out.png  # check scaling
+.venv/bin/python screen_mode.py 0          # or 1: toggle animation / system screen
+```
+
+`upload_gif.py` takes any GIF, scales it to the 240×135 screen
+(`--fit contain|cover|stretch`), and uploads up to 150 frames. `nyan.py`
+downloads the cat sprite from nyan.cat at run time (artwork © Christopher
+Torres; not included here).
+
+Upload protocol (output report `0x09`, framed `09 50 <sum> 3A <cmd> …`):
+`A0` start (`[6]`=frames, `[8]`=delay), then per frame `A3` data packets
+(`[5]`=frame, `[6..7]`=chunk BE, `[8..63]`=56 bytes of RGB565 BE, rows top-down,
+1158 chunks per frame), then `A1` finish (`[6]`=frames, `[8]`=delay). `A2` aborts.
+Screen mode: `B2`, `[5]`=0/1.
+
 ### Linux permissions
 
 To run without `sudo`, add a udev rule and replug the dongle:

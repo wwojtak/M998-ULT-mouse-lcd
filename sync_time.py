@@ -26,44 +26,16 @@ import argparse
 import datetime
 import sys
 
-try:
-    # Linux: the default `hid` module uses the libusb backend, which doesn't
-    # report usage pages and fights the kernel driver; prefer hidraw.
-    import hidraw as hid
-except ImportError:
-    import hid
-
-VID = 0x372E
-PIDS = (0x105F, 0x1060)  # 0x105F = 2.4G dongle/dock, 0x1060 = wired USB
-USAGE_PAGE = 0xFF06
-INTERFACE = 2  # vendor interface carrying usage page 0xFF06
-REPORT_LEN = 64
+from m998 import TFT_USAGE_PAGE, open_device, tft_packet
 
 
 def build_packet(t: datetime.datetime) -> bytes:
-    buf = bytearray(REPORT_LEN)
-    buf[0:5] = bytes([0x09, 0x50, 0x00, 0x3A, 0xB1])
-    buf[7] = t.year % 2000
-    buf[8] = t.month
-    buf[9] = t.day
-    buf[10] = t.hour
-    buf[11] = t.minute
-    buf[12] = t.second
-    buf[13] = (t.weekday() + 1) % 7  # Python Mon=0 -> Windows Sun=0
-    buf[2] = sum(buf[3:]) & 0xFF
-    return bytes(buf)
-
-
-def find_device(usage_page=USAGE_PAGE):
-    devs = [d for d in hid.enumerate(VID) if d["product_id"] in PIDS]
-    for d in devs:
-        if d["usage_page"] == usage_page:
-            return d
-    # Some backends don't expose usage pages; fall back to the interface number.
-    for d in devs:
-        if d["interface_number"] == INTERFACE:
-            return d
-    return None
+    return tft_packet(0xB1, bytes([
+        0x00, 0x00,
+        t.year % 2000, t.month, t.day,
+        t.hour, t.minute, t.second,
+        (t.weekday() + 1) % 7,  # Python Mon=0 -> Windows Sun=0
+    ]))
 
 
 def main():
@@ -78,18 +50,9 @@ def main():
     if args.dry_run:
         return 0
 
-    info = find_device()
-    if not info:
-        print("device not found (VID 372E, usage page FF06 / interface 2)",
-              file=sys.stderr)
-        for d in hid.enumerate(VID):
-            print(f"  seen: pid={d['product_id']:04x} if={d['interface_number']} "
-                  f"usage_page={d['usage_page']:04x} path={d['path']}",
-                  file=sys.stderr)
+    dev = open_device(TFT_USAGE_PAGE)
+    if not dev:
         return 1
-
-    dev = hid.device()
-    dev.open_path(info["path"])
     try:
         n = dev.write(pkt)
     finally:
@@ -97,7 +60,7 @@ def main():
     if n < 0:
         print("write failed", file=sys.stderr)
         return 1
-    print(f"sent {n} bytes to {info['product_string']}")
+    print(f"sent {n} bytes")
     return 0
 
 
