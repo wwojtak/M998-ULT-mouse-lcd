@@ -26,11 +26,17 @@ import argparse
 import datetime
 import sys
 
-import hid
+try:
+    # Linux: the default `hid` module uses the libusb backend, which doesn't
+    # report usage pages and fights the kernel driver; prefer hidraw.
+    import hidraw as hid
+except ImportError:
+    import hid
 
 VID = 0x372E
 PIDS = (0x105F, 0x1060)  # 0x105F = 2.4G dongle/dock, 0x1060 = wired USB
 USAGE_PAGE = 0xFF06
+INTERFACE = 2  # vendor interface carrying usage page 0xFF06
 REPORT_LEN = 64
 
 
@@ -49,8 +55,13 @@ def build_packet(t: datetime.datetime) -> bytes:
 
 
 def find_device():
-    for d in hid.enumerate(VID):
-        if d["product_id"] in PIDS and d["usage_page"] == USAGE_PAGE:
+    devs = [d for d in hid.enumerate(VID) if d["product_id"] in PIDS]
+    for d in devs:
+        if d["usage_page"] == USAGE_PAGE:
+            return d
+    # Some backends don't expose usage pages; fall back to the interface number.
+    for d in devs:
+        if d["interface_number"] == INTERFACE:
             return d
     return None
 
@@ -69,7 +80,12 @@ def main():
 
     info = find_device()
     if not info:
-        print("device not found (VID 372E, usage page FF06)", file=sys.stderr)
+        print("device not found (VID 372E, usage page FF06 / interface 2)",
+              file=sys.stderr)
+        for d in hid.enumerate(VID):
+            print(f"  seen: pid={d['product_id']:04x} if={d['interface_number']} "
+                  f"usage_page={d['usage_page']:04x} path={d['path']}",
+                  file=sys.stderr)
         return 1
 
     dev = hid.device()
