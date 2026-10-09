@@ -5,9 +5,11 @@ The Windows tool (DriverComm::GetCuDeviceVersion) shows the USB release number
 (bcdDevice) of the connected device in hex: the 2.4G dongle/dock (PID 105F),
 or the mouse itself when plugged in by cable (PID 1060).
 
-Latest known firmware comes from Redragon's OTA updater
-("Redragon_M998-ULT _software_OTATool_bootV10_1.exe", config.json:
-pid 105f, version 0052, firmware.bin dated 2026-03-03).
+This is NOT the version Redragon's OTA updater checks: the updater
+("Redragon_M998-ULT _software_OTATool_bootV10_1.exe") reads and writes its own
+firmware version over a separate GeeHy bootloader protocol. Its bundled
+firmware (config.json: pid 105f, version 0052, firmware.bin dated 2026-03-03)
+can't be compared with the USB release number shown here.
 """
 import sys
 
@@ -15,7 +17,6 @@ from battery import read_chunk
 from m998 import INFO_USAGE_PAGE, PIDS, VID, hid, open_device
 
 NAMES = {0x105F: "2.4G dongle/dock", 0x1060: "mouse (wired)"}
-LATEST = {0x105F: 0x0052}
 
 
 def main():
@@ -28,14 +29,7 @@ def main():
         return 1
 
     for pid, ver in sorted(seen.items()):
-        line = f"{NAMES[pid]:<18} {ver:x}"
-        latest = LATEST.get(pid)
-        if latest is not None:
-            if ver >= latest:
-                line += "  (up to date)"
-            else:
-                line += f"  (update available: {latest:x})"
-        print(line)
+        print(f"{NAMES[pid]:<18} {ver:x}")
 
     dev = open_device(INFO_USAGE_PAGE)
     if dev:

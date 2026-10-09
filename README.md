@@ -28,13 +28,14 @@ bits 0–6 = percent.
 ### Firmware versions
 
 ```bash
-.venv/bin/python firmware.py   # e.g. "2.4G dongle/dock   52  (up to date)"
+.venv/bin/python firmware.py   # e.g. "2.4G dongle/dock   112"
 ```
 
 Shows the USB release number (bcdDevice) like the Windows tool does: the
-dongle/dock over 2.4G, or the mouse when plugged in by cable. Compared against
-the newest known release, `0052` (Redragon OTA updater, firmware dated 2026-03-03).
-Updating is Windows-only for now; this tool never writes firmware.
+dongle/dock over 2.4G, or the mouse when plugged in by cable. Redragon's OTA
+updater (firmware dated 2026-03-03, "version 0052") uses a different version
+number read over its own bootloader protocol, so the two can't be compared.
+Updating is Windows-only; this tool never writes firmware.
 
 ### Custom animation on the dock screen
 
